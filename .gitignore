@@ -1,0 +1,12 @@
+# IDE
+/.idea/
+
+# Compile objects
+/build/
+/cmake-build-debug/
+
+# Downloaded datasets
+/dataset/
+
+# Computed results
+/result/
