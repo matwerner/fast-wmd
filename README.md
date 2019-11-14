@@ -78,7 +78,7 @@ After run it, it will dump in the console the configuration used, preprocessing 
 
 As the number of experiments to be run is large, we implemented scripts for easily run most of them:
 
-For AMAZON, BBCSPORT, CLASSIC, RECIPE, TWITTER:
+### For AMAZON, BBCSPORT, CLASSIC, RECIPE, TWITTER:
 ```shell
 sh run-kusner-experiments.sh "<datasets>" "<partitions>" "<function>" "<r>" "<verbose>"
 ```
@@ -89,7 +89,7 @@ sh run-kusner-experiments.sh "amazon bbcsport" "0 1 2 3 4" "rel-wmd" "1 2 4 8"
 ```
 It will run the REL-WMD function with 1, 2, 4 and 8 related words for all partition of the AMAZON and BBCSPORTS datasets.
 
-For 20NEWS, OHSUMED, REUTERS:
+### For 20NEWS, OHSUMED, REUTERS:
 ```shell
 sh run-kusner-experiments.sh "<datasets>" "<partitions>" "<function>" "<r>" "<verbose>"
 ```
@@ -100,7 +100,7 @@ sh run-kusner-experiments.sh "20news" "wmd rwmd"
 ```
 It will run the WMD and RWMD functions for the 20NEWS dataset.
 
-For ARXIV, WIKIPEDIA:
+### For ARXIV, WIKIPEDIA:
 ```shell
 sh run-triplets-experiments.sh "<datasets>" "<partitions>" "<function>" "<r>" "<verbose>"
 ```
