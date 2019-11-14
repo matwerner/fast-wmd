@@ -102,7 +102,7 @@ It will run the WMD and RWMD functions for the 20NEWS dataset.
 
 ### For ARXIV, WIKIPEDIA:
 ```shell
-sh run-triplets-experiments.sh "<datasets>" "<partitions>" "<function>" "<r>" "<verbose>"
+sh run-triplets-experiments.sh "<datasets>" "<function>" "<r>" "<num-clusters>" "<max-iterations>"
 ```
 
 E.g:
