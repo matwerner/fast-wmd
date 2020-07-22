@@ -1,0 +1,4 @@
+# Compiled objects
+/build/
+/*.so
+/fastwmd.cpp
