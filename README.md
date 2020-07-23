@@ -1,6 +1,11 @@
 # Speeding up Word Mover's Distance and its variants via properties of distances between embeddings
 
-This repository contains our in the source code used for all experiments.
+This repository contains the source code used for all experiments.
+
+Paper: https://arxiv.org/pdf/1912.00509.pdf
+
+
+(under development) A [Python-wrapper package](https://github.com/matwerner/fast-wmd/tree/python-wrapper) of the main algorithms is also available.
 
 # Environment tested
 
