@@ -18,9 +18,22 @@ namespace fastwmd {
 
         C_WMD(const std::shared_ptr<C_Embeddings>& embeddings): m_embeddings(embeddings) {}
 
+        /**
+         * Compute the Word Mover's Distance (WMD) between document 1 and document 2.
+         * This distance is equivalent to the Transportation problem in a complete bipartite graph.
+         * The source nodes are the tokens in document 1, the target nodes are the tokens in document 2
+         * and the edge costs are given by the word embedding distances between each token pair.
+         *
+         * @param nbow1 List of tokens in Document 1 and their respective weights
+         * @param nbow2 List of tokens in Document 2 and their respective weights
+         * @return WMD distance
+         */
         float computeDistance(const std::vector<std::pair<unsigned int, float>>& nbow1,
                               const std::vector<std::pair<unsigned int, float>>& nbow2) {
-            // Source and Target nodes do not share tokens
+            // For a faster execution, documents do not share tokens.
+            // E.g: If nbow1 and nbow2 contain the token 'AI' with nbow1['AI'] = 0.1 and nbow2['AI'] = 0.2.
+            //      We take the diff so that 'AI' is removed from nbow1 and nbow2['AI'] = 0.1.
+            //      This is the same of transporting weight = 0.1 with cost 0.
             const auto& diffNbow1 = C_Util::diffNbow(nbow1, nbow2);
             const auto& diffNbow2 = C_Util::diffNbow(nbow2, nbow1);
 

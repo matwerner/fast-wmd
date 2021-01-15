@@ -18,9 +18,23 @@ namespace fastwmd {
 
         C_RelWMD(const std::shared_ptr<C_RelatedWords>& relatedWords): m_relatedWords(relatedWords) {}
 
+        /**
+         * Compute the Related Word Mover's Distance (Rel-WMD) between document 1 and document 2.
+         * This distance is equivalent to the Transportation problem in a sparse bipartite graph.
+         * The source nodes are the tokens in document 1, the target nodes are the tokens in document 2
+         * and the edges are composed by the related token pairs between them. The costs of these edges
+         * are given by the word embedding distances between each token pair.
+         *
+         * @param nbow1 Map of tokens in Document 1 and their respective weights
+         * @param nbow2 Map of tokens in Document 2 and their respective weights
+         * @return Rel-WMD distance
+         */
         float computeDistance(const std::unordered_map<unsigned int, float>& nbow1,
                               const std::unordered_map<unsigned int, float>& nbow2) {
-            // Source and Target nodes do not share tokens
+            // For a faster execution, documents do not share tokens.
+            // E.g: If nbow1 and nbow2 contain the token 'AI' with nbow1['AI'] = 0.1 and nbow2['AI'] = 0.2.
+            //      We take the diff so that 'AI' is removed from nbow1 and nbow2['AI'] = 0.1.
+            //      This is the same of transporting weight = 0.1 with cost 0.
             const auto& diffNbow1 = C_Util::diffNbow(nbow1, nbow2);
             const auto& diffNbow2 = C_Util::diffNbow(nbow2, nbow1);
 
@@ -46,6 +60,7 @@ namespace fastwmd {
             for(const auto& token: diffNbow2) {
                 nodes.emplace_back(tokenToNodeMap[token.first], -token.second);
             }
+            // Adding an extra node for solution feasible -> there must always be a path connecting sources and targets
             operations_research::NodeIndex transshipmentNodeIndex = diffNbow1.size() + diffNbow2.size();
 
             // Minimum cost flow
@@ -97,12 +112,25 @@ namespace fastwmd {
 
         std::shared_ptr<C_RelatedWords> m_relatedWords;
 
+        /**
+         * Get all the edges connecting the source (Document 1) to the target (Document 2) nodes.
+         *
+         * @param diffNbow1 Map of tokens exclusive to Document 1 and their respective weights
+         * @param diffNbow2 Map of tokens exclusive to Document 2 and their respective weights
+         * @param tokenToNodeMap Structure mapping token indices to node indices
+         * @return List of edges
+         */
         std::vector<std::tuple<operations_research::NodeIndex, operations_research::NodeIndex, float>> getEdges(
                 const std::unordered_map<unsigned int, float>& diffNbow1, const std::unordered_map<unsigned int, float>& diffNbow2,
                 const std::unordered_map<unsigned int, operations_research::NodeIndex>& tokenToNodeMap) {
             unsigned int r = m_relatedWords->getR();
 
-            // Find related words in r|D| instead of |D|^2
+            // Find related words (edges) between documents in r|D| instead of |D|^2.
+            // Instead of checking all token pairs between them, get the related words for each token in one of the documents
+            // and for each related word list and each token in it do a look-up operation in the hash table of the other
+
+            // For a faster execution, we iterate over the smaller document and then do a look-up
+            // in the hash table of the larger one.
             bool isSourcesSmaller = diffNbow1.size() < diffNbow2.size();
             const auto& smaller = isSourcesSmaller? diffNbow1 : diffNbow2;
             const auto& larger = isSourcesSmaller? diffNbow2 : diffNbow1;
@@ -114,7 +142,9 @@ namespace fastwmd {
                 operations_research::NodeIndex smallerNodeIndex = tokenToNodeMap.at(smallerTokenIndex);
                 const auto& relatedWords = m_relatedWords->getRelatedWords(smallerTokenIndex);
 
-                // r is bigger than document size
+                // We want to find out the tokens in common between the larger document and related words.
+                // Since both related words and larger are hashed, iterate over the smaller one of the two to get the
+                // tokens in common. Using this approach, we should have have a faster execution.
                 if(relatedWords.size() > larger.size()) {
                     for(const auto& largerIt: larger) {
                         unsigned int largerTokenIndex = largerIt.first;
@@ -145,6 +175,9 @@ namespace fastwmd {
                 }
             }
 
+            // Since we are removing some edges of the original wmd formulation, the solution can be unfeasible now.
+            // To the new formulation be always feasible we have to add alternative edges connecting the source and
+            // target nodes. However, we just want to use these edges in last case, thus they have higher edge costs.
             float maximumDistance = m_relatedWords->getMaximumDistance();
             operations_research::NodeIndex transshipmentNodeIndex = diffNbow1.size() + diffNbow2.size();
             for(const auto& token: diffNbow1) {
