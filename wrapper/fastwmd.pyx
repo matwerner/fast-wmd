@@ -29,7 +29,7 @@ cdef class RelatedWords:
     def __cinit__(self, Embeddings embeddings, uint r):
         self.c_related_words.reset(new C_RelatedWords(embeddings.c_embeddings, r))
 
-    def get_related_words(self, uint index):
+    def get_related_words(self, TokenIndex index):
         return self.c_related_words.get().getRelatedWords(index)
 
     def get_maximum_distance(self):
@@ -37,46 +37,34 @@ cdef class RelatedWords:
 
 # Reference:
 # https://stackoverflow.com/questions/28573479/cython-python-c-inheritance-passing-derived-class-as-argument-to-function-e
-cdef class StandardDistance:
-    cdef C_Distance[standard_nbow]* c_distance
+cdef class Distance:
+    cdef C_Distance* c_distance
 
-    def compute_distance(self, const standard_nbow& nbow1, const standard_nbow& nbow2):
+    def compute_distance(self, const Document& nbow1, const Document& nbow2):
         return self.c_distance.computeDistance(nbow1, nbow2)
 
-    def compute_distances(self, const standard_nbow_list& nbows1, const standard_nbow_list& nbows2=[]):
+    def compute_distances(self, const vector[Document]& nbows1, const vector[Document]& nbows2=[]):
         if len(nbows2) == 0:
             return self.c_distance.computeDistances(nbows1)
         else:
             return self.c_distance.computeDistances(nbows1, nbows2)
 
-cdef class WMD(StandardDistance):
+cdef class WMD(Distance):
 
     def __cinit__(self, Embeddings embeddings):
         self.c_distance = new C_WMD(embeddings.c_embeddings)
 
-cdef class RWMD(StandardDistance):
+cdef class RWMD(Distance):
 
     def __cinit__(self, Embeddings embeddings):
         self.c_distance = new C_RWMD(embeddings.c_embeddings)
 
-cdef class HashedDistance:
-    cdef C_Distance[hashed_nbow]* c_distance
-
-    def compute_distance(self, const hashed_nbow& nbow1, const hashed_nbow& nbow2):
-        return self.c_distance.computeDistance(nbow1, nbow2)
-
-    def compute_distances(self, const hashed_nbow_list& nbows1, const hashed_nbow_list& nbows2=[]):
-        if len(nbows2) == 0:
-            return self.c_distance.computeDistances(nbows1)
-        else:
-            return self.c_distance.computeDistances(nbows1, nbows2)
-
-cdef class RelWMD(HashedDistance):
+cdef class RelWMD(Distance):
 
     def __cinit__(self, RelatedWords related_words):
         self.c_distance = new C_RelWMD(related_words.c_related_words)
 
-cdef class RelRWMD(HashedDistance):
+cdef class RelRWMD(Distance):
 
     def __cinit__(self, RelatedWords related_words):
         self.c_distance = new C_RelRWMD(related_words.c_related_words)

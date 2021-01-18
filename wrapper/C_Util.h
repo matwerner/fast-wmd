@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include "C_CONSTANTS.h"
 
 namespace fastwmd {
 
@@ -10,26 +11,25 @@ namespace fastwmd {
 
     public:
 
-        static std::vector<unsigned int> getNbowIndices(const std::vector<std::pair<unsigned int, float>>& nbow) {
-            std::vector<unsigned int> indices(nbow.size());
-            for(unsigned int i = 0; i < nbow.size(); i++) {
+        static std::vector<TokenIndex> getNbowIndices(const Document& nbow) {
+            std::vector<TokenIndex> indices(nbow.size());
+            for(std::size_t i = 0; i < nbow.size(); i++) {
                 indices[i] = nbow[i].first;
             }
             return indices;
         }
 
-        static std::vector<std::pair<unsigned int, float>> diffNbow(const std::vector<std::pair<unsigned int, float>>& nbow1,
-                                                                    const std::vector<std::pair<unsigned int, float>>& nbow2) {
-            std::vector<std::pair<unsigned int, float>> diffNbow;
+        static Document diffNbow(const Document& nbow1, const Document& nbow2) {
+            Document diffNbow;
             diffNbow.reserve(nbow1.size());
 
-            unsigned int i = 0, j = 0;
+            std::size_t i = 0, j = 0;
             while(i < nbow1.size()) {
                 if(j >= nbow2.size() || nbow1[i].first < nbow2[j].first) {
                     diffNbow.emplace_back(nbow1[i]);
                     i++;
                 } else if(nbow1[i].first == nbow2[j].first) {
-                    float weight = nbow1[i].second - nbow2[j].second;
+                    TokenWeight weight = nbow1[i].second - nbow2[j].second;
                     if(weight > 0) diffNbow.emplace_back(nbow1[i].first, weight);
                     i++; j++;
                 } else {
@@ -39,19 +39,13 @@ namespace fastwmd {
             return diffNbow;
         }
 
-        static std::unordered_map<unsigned int, float> diffNbow(const std::unordered_map<unsigned int, float>& nbow1,
-                                                                const std::unordered_map<unsigned int, float>& nbow2) {
-            std::unordered_map<unsigned int, float> diffNbow;
-            diffNbow.reserve(nbow1.size());
-            for(const auto& it: nbow1) {
-                float weight = it.second;
-                // Check whether token is in both documents
-                const auto& itCommon = nbow2.find(it.first);
-                weight -= itCommon == nbow2.end()? 0 :  itCommon->second;
-                if(weight <= 0) continue;
-                diffNbow[it.first] = weight;
+        static HashedDocument getHashedDocument(const Document& nbow) {
+            HashedDocument hashedNbow;
+            hashedNbow.reserve(nbow.size());
+            for(std::size_t i = 0; i < nbow.size(); i++) {
+                hashedNbow[nbow[i].first] = nbow[i].second;
             }
-            return diffNbow;
+            return hashedNbow;
         }
 
     };

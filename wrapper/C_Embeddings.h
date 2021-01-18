@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "C_CONSTANTS.h"
 
 namespace fastwmd {
 
@@ -17,13 +18,13 @@ namespace fastwmd {
 
         C_Embeddings() {}
 
-        C_Embeddings(const std::string& filepath, unsigned int maxNumEmbeddings=std::numeric_limits<unsigned int>::max()) {
+        C_Embeddings(const std::string& filepath, std::size_t maxNumEmbeddings=std::numeric_limits<TokenIndex>::max()) {
             std::ifstream inFile (filepath);
             if (!inFile.is_open()) {
                 throw std::runtime_error("Unable to open file. Path: " + filepath);
             }
 
-            unsigned int numEmbeddings;
+            std::size_t numEmbeddings;
             inFile >> numEmbeddings >> m_embeddingSize;
             inFile.ignore(); // ignore '\n'
 
@@ -31,8 +32,8 @@ namespace fastwmd {
 
             std::string line;
             m_tokens.resize(m_numEmbeddings);
-            m_embeddings = Eigen::MatrixXf(m_embeddingSize, m_numEmbeddings);
-            unsigned int i;
+            m_embeddings = EigenDistanceMatrix(m_embeddingSize, m_numEmbeddings);
+            std::size_t i;
             for(i = 0; i < m_numEmbeddings && inFile.peek() != std::ifstream::traits_type::eof(); i++) {
                 std::string lineError = "Line: " + std::to_string(i) + ". File: " + filepath + "\n";
                 try {
@@ -49,9 +50,9 @@ namespace fastwmd {
 
                     // int tokenId = std::stoi(inputVector[0]);
                     m_tokens[i] = inputVector[0];
-                    for(unsigned int j = 0; j < m_embeddingSize; j++) {
+                    for(std::size_t j = 0; j < m_embeddingSize; j++) {
                         try {
-                            m_embeddings(j, i) = std::stof(inputVector[j+1]);
+                            m_embeddings(j, i) = (DistanceValue) std::stod(inputVector[j+1]);
                         } catch (const std::exception& e) {
                             throw std::runtime_error("Embedding value could not be parsed.\n" + lineError);
                         }
@@ -67,20 +68,20 @@ namespace fastwmd {
             }
         }
 
-        C_Embeddings(unsigned int numEmbeddings, unsigned int embeddingSize, std::vector<std::vector<float>>& embeddings) {
+        C_Embeddings(std::size_t numEmbeddings, std::size_t embeddingSize, std::vector<std::vector<DistanceValue>>& embeddings) {
             m_numEmbeddings = numEmbeddings;
             m_embeddingSize = embeddingSize;
-            m_embeddings = Eigen::MatrixXf(m_embeddingSize, m_numEmbeddings);
-            for(unsigned int i = 0; i < m_numEmbeddings; i++) {
-                m_embeddings.col(i) = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(embeddings[i].data(), embeddings[i].size());
+            m_embeddings = EigenDistanceMatrix(m_embeddingSize, m_numEmbeddings);
+            for(std::size_t i = 0; i < m_numEmbeddings; i++) {
+                m_embeddings.col(i) = Eigen::Map<EigenDistanceVector, Eigen::Unaligned>(embeddings[i].data(), embeddings[i].size());
             }
         }
 
-        unsigned int getNumEmbeddings() {
+        std::size_t getNumEmbeddings() {
             return m_numEmbeddings;
         }
 
-        unsigned int getEmbeddingSize() {
+        std::size_t getEmbeddingSize() {
             return m_embeddingSize;
         }
 
@@ -88,42 +89,41 @@ namespace fastwmd {
             return m_tokens;
         }
 
-        const Eigen::MatrixXf& getEmbeddings() {
+        const EigenDistanceMatrix& getEmbeddings() {
             return m_embeddings;
         }
 
-        Eigen::MatrixXf getEmbeddings(const std::vector<unsigned int>& indices) {
-            Eigen::MatrixXf S(m_embeddingSize, indices.size());
-            for (unsigned int i = 0; i < indices.size(); i++) {
+        EigenDistanceMatrix getEmbeddings(const std::vector<TokenIndex>& indices) {
+            EigenDistanceMatrix S(m_embeddingSize, indices.size());
+            for (std::size_t i = 0; i < indices.size(); i++) {
                 S.col(i) = m_embeddings.col(indices[i]);
             }
             return S;
         }
 
-        Eigen::VectorXf computeDistances(unsigned int index) {
-            Eigen::VectorXf SS = m_embeddings.colwise().squaredNorm();
-            Eigen::VectorXf TT = m_embeddings.col(index).squaredNorm() * Eigen::VectorXf::Ones(m_numEmbeddings);
-            Eigen::VectorXf ST = 2 * m_embeddings.transpose() * m_embeddings.col(index);
+        EigenDistanceVector computeDistances(TokenIndex index) {
+            EigenDistanceVector SS = m_embeddings.colwise().squaredNorm();
+            EigenDistanceVector TT = m_embeddings.col(index).squaredNorm() * EigenDistanceVector::Ones(m_numEmbeddings);
+            EigenDistanceVector ST = 2 * m_embeddings.transpose() * m_embeddings.col(index);
             return (SS - ST + TT).cwiseSqrt();
         }
 
-        Eigen::MatrixXf computeDistances(const std::vector<unsigned int>& indices1,
-                                         const std::vector<unsigned int>& indices2) {
-            Eigen::MatrixXf S = getEmbeddings(indices1), T = getEmbeddings(indices2);
+        EigenDistanceMatrix computeDistances(const std::vector<TokenIndex>& indices1, const std::vector<TokenIndex>& indices2) {
+            EigenDistanceMatrix S = getEmbeddings(indices1), T = getEmbeddings(indices2);
 
-            Eigen::MatrixXf SS = Eigen::MatrixXf::Zero(indices1.size(), indices2.size()).colwise()
+            EigenDistanceMatrix SS = EigenDistanceMatrix::Zero(indices1.size(), indices2.size()).colwise()
                                  + S.colwise().squaredNorm().transpose();
-            Eigen::MatrixXf TT = Eigen::MatrixXf::Zero(indices1.size(), indices2.size()).array().rowwise()
+            EigenDistanceMatrix TT = EigenDistanceMatrix::Zero(indices1.size(), indices2.size()).array().rowwise()
                                  + T.colwise().squaredNorm().array();
-            Eigen::MatrixXf ST = 2 * (S.transpose() * T);
+            EigenDistanceMatrix ST = 2 * (S.transpose() * T);
             return (SS - ST + TT).cwiseSqrt();
         }
 
     private:
 
-        unsigned int m_numEmbeddings, m_embeddingSize;
+        std::size_t m_numEmbeddings, m_embeddingSize;
         std::vector<std::string> m_tokens;
-        Eigen::MatrixXf m_embeddings;
+        EigenDistanceMatrix m_embeddings;
 
     };
 

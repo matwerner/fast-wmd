@@ -7,15 +7,18 @@ from libcpp.unordered_map cimport unordered_map
 from libcpp.vector cimport vector
 
 ctypedef unsigned int uint
-ctypedef vector[pair[uint,float]] standard_nbow
-ctypedef vector[vector[pair[uint,float]]] standard_nbow_list
-ctypedef unordered_map[uint,float] hashed_nbow
-ctypedef vector[unordered_map[uint,float]] hashed_nbow_list
 
 # something.pxd
 cdef extern from "limits.h":
     cdef int INT_MAX
     cdef unsigned int UINT_MAX
+
+cdef extern from "C_CONSTANTS.h" namespace "fastwmd":
+    ctypedef unsigned int TokenIndex
+    ctypedef float TokenWeight
+    ctypedef float DistanceValue
+    ctypedef vector[pair[TokenIndex,TokenWeight]] Document
+    ctypedef unordered_map[TokenIndex, DistanceValue] HashedRelatedWords
 
 # Declare the class with cdef
 cdef extern from "C_Embeddings.h" namespace "fastwmd":
@@ -23,40 +26,40 @@ cdef extern from "C_Embeddings.h" namespace "fastwmd":
         C_Embeddings() except +
         C_Embeddings(string) except +
         C_Embeddings(string, uint) except +
-        int getNumEmbeddings()
-        int getEmbeddingSize()
+        uint getNumEmbeddings()
+        uint getEmbeddingSize()
         vector[string] getTokens()
 
 cdef extern from "C_RelatedWords.h" namespace "fastwmd":
     cdef cppclass C_RelatedWords:
         C_RelatedWords() except +
         C_RelatedWords(shared_ptr[C_Embeddings], uint) except +
-        const unordered_map[uint, float]& getRelatedWords(uint)
-        float getMaximumDistance()
+        const HashedRelatedWords& getRelatedWords(TokenIndex)
+        DistanceValue getMaximumDistance()
 
 cdef extern from "C_Distance.h" namespace "fastwmd":
-    cdef cppclass C_Distance[T]:
+    cdef cppclass C_Distance:
         C_Distance() except +
-        float computeDistance(const T&, const T&)
-        vector[vector[float]] computeDistances(const vector[T]&, const vector[T]&)
-        vector[vector[float]] computeDistances(const vector[T]&)
+        DistanceValue computeDistance(const Document&, const Document&)
+        vector[vector[DistanceValue]] computeDistances(const vector[Document]&, const vector[Document]&)
+        vector[vector[DistanceValue]] computeDistances(const vector[Document]&)
 
 cdef extern from "C_WMD.h" namespace "fastwmd":
-    cdef cppclass C_WMD(C_Distance[standard_nbow]):
+    cdef cppclass C_WMD(C_Distance):
         C_WMD() except +
         C_WMD(shared_ptr[C_Embeddings]) except +
 
 cdef extern from "C_RWMD.h" namespace "fastwmd":
-    cdef cppclass C_RWMD(C_Distance[standard_nbow]):
+    cdef cppclass C_RWMD(C_Distance):
         C_RWMD() except +
         C_RWMD(shared_ptr[C_Embeddings]) except +
 
 cdef extern from "C_RelWMD.h" namespace "fastwmd":
-    cdef cppclass C_RelWMD(C_Distance[hashed_nbow]):
+    cdef cppclass C_RelWMD(C_Distance):
         C_RelWMD() except +
         C_RelWMD(shared_ptr[C_RelatedWords]) except +
 
 cdef extern from "C_RelRWMD.h" namespace "fastwmd":
-    cdef cppclass C_RelRWMD(C_Distance[hashed_nbow]):
+    cdef cppclass C_RelRWMD(C_Distance):
         C_RelRWMD() except +
         C_RelRWMD(shared_ptr[C_RelatedWords]) except +

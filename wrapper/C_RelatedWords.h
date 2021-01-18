@@ -14,39 +14,39 @@ namespace fastwmd {
 
         C_RelatedWords() {}
 
-        C_RelatedWords(const std::shared_ptr<C_Embeddings>& embeddings, unsigned int r) {
-            unsigned int numEmbeddings = embeddings->getNumEmbeddings();
+        C_RelatedWords(const std::shared_ptr<C_Embeddings>& embeddings, std::size_t r) {
+            std::size_t numEmbeddings = embeddings->getNumEmbeddings();
 
             // Reserve expected memory space
             m_r = r;
-            m_cache = std::vector<std::unordered_map<unsigned int, float>>(numEmbeddings, std::unordered_map<unsigned int, float>());
+            m_cache = std::vector<HashedRelatedWords>(numEmbeddings, HashedRelatedWords());
             for(auto& dict: m_cache) {
                 dict.reserve(m_r);
             }
 
             // Pre-compute
-            const Eigen::MatrixXf& embeddingsMatrix = embeddings->getEmbeddings();
-            Eigen::VectorXf embeddingsSquareNorm = embeddingsMatrix.colwise().squaredNorm();
-            Eigen::VectorXf SS = embeddingsSquareNorm;
+            const EigenDistanceMatrix& embeddingsMatrix = embeddings->getEmbeddings();
+            EigenDistanceVector embeddingsSquareNorm = embeddingsMatrix.colwise().squaredNorm();
+            EigenDistanceVector SS = embeddingsSquareNorm;
 
             double unrelatedDistancesTotal = 0.0;
-            unsigned int unrelatedDistancesCount = 0;
-            for(unsigned int i = 0; i < numEmbeddings; i++) {
+            std::size_t unrelatedDistancesCount = 0;
+            for(std::size_t i = 0; i < numEmbeddings; i++) {
                 // Compute norms
-                Eigen::VectorXf TT = embeddingsSquareNorm[i]* Eigen::VectorXf::Ones(numEmbeddings);
-                Eigen::VectorXf ST = 2 * embeddingsMatrix.transpose() * embeddingsMatrix.col(i);
-                Eigen::VectorXf D = (SS - ST + TT).cwiseSqrt();
+                EigenDistanceVector TT = embeddingsSquareNorm[i]* EigenDistanceVector::Ones(numEmbeddings);
+                EigenDistanceVector ST = 2 * embeddingsMatrix.transpose() * embeddingsMatrix.col(i);
+                EigenDistanceVector D = (SS - ST + TT).cwiseSqrt();
 
                 // Get the correct threshold to be used
                 // The word itself is not considered part of the r-th closest words
-                float threshold = std::numeric_limits<float>::max();
+                DistanceValue threshold = std::numeric_limits<DistanceValue>::max();
                 if (r < numEmbeddings) {
-                    std::vector<float> distances(D.data(), D.data() + D.size());
+                    std::vector<DistanceValue> distances(D.data(), D.data() + D.size());
                     std::nth_element(distances.begin(), distances.begin() + m_r, distances.end());
-                    threshold = distances[m_r] + std::numeric_limits<float>::epsilon();
+                    threshold = distances[m_r] + std::numeric_limits<DistanceValue>::epsilon();
                 }
 
-                for(unsigned int j = 0; j < numEmbeddings; j++) {
+                for(std::size_t j = 0; j < numEmbeddings; j++) {
                     if(i == j) {
                         continue;
                     } else if(D.coeff(j) < threshold) {
@@ -58,26 +58,26 @@ namespace fastwmd {
                     }
                 }
             }
-            m_maximumDistance = (float) (unrelatedDistancesTotal / unrelatedDistancesCount);
+            m_maximumDistance = (DistanceValue) (unrelatedDistancesTotal / unrelatedDistancesCount);
         }
 
-        unsigned int getR() {
+        std::size_t getR() {
             return m_r;
         }
 
-        const std::unordered_map<unsigned int, float>& getRelatedWords(unsigned int index) {
+        const HashedRelatedWords& getRelatedWords(TokenIndex index) {
             return m_cache[index];
         }
 
-        float getMaximumDistance() {
+        DistanceValue getMaximumDistance() {
             return m_maximumDistance;
         }
 
     private:
 
-        unsigned int m_r;
-        std::vector<std::unordered_map<unsigned int, float>> m_cache;
-        float m_maximumDistance;
+        std::size_t m_r;
+        std::vector<HashedRelatedWords> m_cache;
+        DistanceValue m_maximumDistance;
 
     };
 }

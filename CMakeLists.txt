@@ -3,7 +3,9 @@ project(fast_wmd)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(fast_wmd src/main.cpp src/Tools.cpp src/Tools.hpp src/Clustering.cpp src/Clustering.hpp src/Distances.cpp src/Distances.hpp)
+add_executable(fast_wmd src/main.cpp src/Tools.cpp src/Tools.hpp src/Clustering.cpp src/Clustering.hpp src/Distances.cpp src/Distances.hpp
+        wrapper/C_Embeddings.h wrapper/C_RWMD.h wrapper/C_RelatedWords.h wrapper/C_RelRWMD.h wrapper/C_WMD.h wrapper/C_Distance.h wrapper/C_RelWMD.h
+        wrapper/C_Util.h wrapper/C_CONSTANTS.h)
 
 # Add ortools
 find_library(ORTOOLS_LIB ortools)

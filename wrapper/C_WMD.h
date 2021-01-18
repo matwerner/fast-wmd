@@ -10,7 +10,7 @@
 
 namespace fastwmd {
 
-    class C_WMD: public C_Distance<std::vector<std::pair<unsigned int, float>>> {
+    class C_WMD: public C_Distance {
 
     public:
 
@@ -19,17 +19,16 @@ namespace fastwmd {
         C_WMD(const std::shared_ptr<C_Embeddings>& embeddings): m_embeddings(embeddings) {}
 
         /**
-         * Compute the Word Mover's Distance (WMD) between document 1 and document 2.
+         * Compute the Word Mover's Distance (WMD) between Doc1 and Doc2.
          * This distance is equivalent to the Transportation problem in a complete bipartite graph.
-         * The source nodes are the tokens in document 1, the target nodes are the tokens in document 2
+         * The source nodes are the tokens in Doc1, the target nodes are the tokens in Doc2
          * and the edge costs are given by the word embedding distances between each token pair.
          *
-         * @param nbow1 List of tokens in Document 1 and their respective weights
-         * @param nbow2 List of tokens in Document 2 and their respective weights
+         * @param nbow1 List of tokens in Doc1 and their respective normalized weights
+         * @param nbow2 List of tokens in Doc2 and their respective normalized weights
          * @return WMD distance
          */
-        float computeDistance(const std::vector<std::pair<unsigned int, float>>& nbow1,
-                              const std::vector<std::pair<unsigned int, float>>& nbow2) {
+        DistanceValue computeDistance(const Document& nbow1, const Document& nbow2) {
             // For a faster execution, documents do not share tokens.
             // E.g: If nbow1 and nbow2 contain the token 'AI' with nbow1['AI'] = 0.1 and nbow2['AI'] = 0.2.
             //      We take the diff so that 'AI' is removed from nbow1 and nbow2['AI'] = 0.1.
@@ -44,7 +43,7 @@ namespace fastwmd {
             // Setting up supplies
             operations_research::NodeIndex nodeIndex, maxNodeIndex = -1;
             operations_research::FlowQuantity deltaSupply = 0, nodeSupply, maxNodeSupply = 0;
-            for(unsigned int i = 0; i < diffNbow1.size(); i++) {
+            for(std::size_t i = 0; i < diffNbow1.size(); i++) {
                 nodeIndex = i;
                 nodeSupply = std::round(MASS_MULT * diffNbow1[i].second);
                 if(nodeSupply > maxNodeSupply) {
@@ -56,7 +55,7 @@ namespace fastwmd {
             }
 
             // Setting up demands
-            for(unsigned int j = 0; j < diffNbow2.size(); j++) {
+            for(std::size_t j = 0; j < diffNbow2.size(); j++) {
                 nodeIndex = diffNbow1.size() + j;
                 nodeSupply = std::round(MASS_MULT * diffNbow2[j].second);
                 minCostFlow.SetNodeSupply(nodeIndex, -nodeSupply);
@@ -65,11 +64,11 @@ namespace fastwmd {
             minCostFlow.SetNodeSupply(maxNodeIndex, minCostFlow.Supply(maxNodeIndex) - deltaSupply);
 
             // Setting up arcs
-            std::vector<unsigned int> tokens1 = C_Util::getNbowIndices(diffNbow1), tokens2 = C_Util::getNbowIndices(diffNbow2);
-            Eigen::MatrixXf D = m_embeddings->computeDistances(tokens1, tokens2);
-            for(unsigned int i = 0; i < diffNbow1.size(); i++) {
+            std::vector<TokenIndex> tokens1 = C_Util::getNbowIndices(diffNbow1), tokens2 = C_Util::getNbowIndices(diffNbow2);
+            EigenDistanceMatrix D = m_embeddings->computeDistances(tokens1, tokens2);
+            for(std::size_t i = 0; i < diffNbow1.size(); i++) {
                 operations_research::NodeIndex source = i;
-                for(unsigned int j = 0; j < diffNbow2.size(); j++) {
+                for(std::size_t j = 0; j < diffNbow2.size(); j++) {
                     operations_research::NodeIndex target = diffNbow1.size() + j;
                     operations_research::CostValue cost = std::round(COST_MULT * D.coeffRef(i,j));
 
@@ -83,13 +82,13 @@ namespace fastwmd {
             if(operations_research::MinCostFlow::OPTIMAL != minCostFlow.status()) {
                 throw std::runtime_error("operations_research::MinCostFlow::OPTIMAL != minCostFlow.status()");
             }
-            return minCostFlow.GetOptimalCost() / (float) (MASS_MULT * COST_MULT);
+            return (DistanceValue) (minCostFlow.GetOptimalCost() / (double) (MASS_MULT * COST_MULT));
         }
 
     private:
 
-        const static int MASS_MULT = 1000 * 1000;   // weights quantization constant
-        const static int COST_MULT = 1000;		 	// costs quantization constant
+        const static int64 MASS_MULT = 1000 * 1000;  // weights quantization constant
+        const static int64 COST_MULT = 1000;         // costs quantization constant
 
         std::shared_ptr<C_Embeddings> m_embeddings;
 

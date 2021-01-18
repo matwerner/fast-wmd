@@ -10,7 +10,7 @@
 
 namespace fastwmd {
 
-    class C_RelWMD: public C_Distance<std::unordered_map<unsigned int, float>> {
+    class C_RelWMD: public C_Distance {
 
     public:
 
@@ -19,28 +19,27 @@ namespace fastwmd {
         C_RelWMD(const std::shared_ptr<C_RelatedWords>& relatedWords): m_relatedWords(relatedWords) {}
 
         /**
-         * Compute the Related Word Mover's Distance (Rel-WMD) between document 1 and document 2.
+         * Compute the Related Word Mover's Distance (Rel-WMD) between Doc1 and Doc2.
          * This distance is equivalent to the Transportation problem in a sparse bipartite graph.
-         * The source nodes are the tokens in document 1, the target nodes are the tokens in document 2
+         * The source nodes are the tokens in Doc1, the target nodes are the tokens in Doc2
          * and the edges are composed by the related token pairs between them. The costs of these edges
          * are given by the word embedding distances between each token pair.
          *
-         * @param nbow1 Map of tokens in Document 1 and their respective weights
-         * @param nbow2 Map of tokens in Document 2 and their respective weights
-         * @return Rel-WMD distance
+         * @param nbow1 Map of tokens in Doc1 and their respective normalized weights
+         * @param nbow2 Map of tokens in Doc2 and their respective normalized weights
+         * @return Rel-WMD distance value
          */
-        float computeDistance(const std::unordered_map<unsigned int, float>& nbow1,
-                              const std::unordered_map<unsigned int, float>& nbow2) {
+        DistanceValue computeDistance(const Document& nbow1, const Document& nbow2) {
             // For a faster execution, documents do not share tokens.
             // E.g: If nbow1 and nbow2 contain the token 'AI' with nbow1['AI'] = 0.1 and nbow2['AI'] = 0.2.
             //      We take the diff so that 'AI' is removed from nbow1 and nbow2['AI'] = 0.1.
             //      This is the same of transporting weight = 0.1 with cost 0.
-            const auto& diffNbow1 = C_Util::diffNbow(nbow1, nbow2);
-            const auto& diffNbow2 = C_Util::diffNbow(nbow2, nbow1);
+            const auto& diffNbow1 = C_Util::getHashedDocument(C_Util::diffNbow(nbow1, nbow2));
+            const auto& diffNbow2 = C_Util::getHashedDocument(C_Util::diffNbow(nbow2, nbow1));
 
             // Convert token to node
             operations_research::NodeIndex nodeIndex = 0;
-            std::unordered_map<unsigned int, operations_research::NodeIndex> tokenToNodeMap;
+            std::unordered_map<TokenIndex, operations_research::NodeIndex> tokenToNodeMap;
             tokenToNodeMap.reserve(diffNbow1.size() + diffNbow2.size());
             for(const auto& token: diffNbow1)
                 tokenToNodeMap[token.first] = nodeIndex++;
@@ -102,43 +101,43 @@ namespace fastwmd {
             if(operations_research::MinCostFlow::OPTIMAL != minCostFlow.status()) {
                 throw std::runtime_error("operations_research::MinCostFlow::OPTIMAL != minCostFlow.status()");
             }
-            return minCostFlow.GetOptimalCost() / (float) (MASS_MULT * COST_MULT);
+            return (DistanceValue) (minCostFlow.GetOptimalCost() / (double) (MASS_MULT * COST_MULT));
         }
 
     private:
 
-        const static int MASS_MULT = 1000 * 1000;   // weights quantization constant
-        const static int COST_MULT = 1000;		 	// costs quantization constant
+        const static int64 MASS_MULT = 1000 * 1000;  // weights quantization constant
+        const static int64 COST_MULT = 1000;         // costs quantization constant
 
         std::shared_ptr<C_RelatedWords> m_relatedWords;
 
         /**
-         * Get all the edges connecting the source (Document 1) to the target (Document 2) nodes.
+         * Get all the edges connecting the source (Doc1) to the target (Doc2) nodes.
          *
-         * @param diffNbow1 Map of tokens exclusive to Document 1 and their respective weights
-         * @param diffNbow2 Map of tokens exclusive to Document 2 and their respective weights
+         * @param diffNbow1 Map of tokens exclusive to Doc1 and their respective normalized weights
+         * @param diffNbow2 Map of tokens exclusive to Doc2 and their respective normalized weights
          * @param tokenToNodeMap Structure mapping token indices to node indices
          * @return List of edges
          */
         std::vector<std::tuple<operations_research::NodeIndex, operations_research::NodeIndex, float>> getEdges(
-                const std::unordered_map<unsigned int, float>& diffNbow1, const std::unordered_map<unsigned int, float>& diffNbow2,
-                const std::unordered_map<unsigned int, operations_research::NodeIndex>& tokenToNodeMap) {
-            unsigned int r = m_relatedWords->getR();
+                const HashedDocument& diffNbow1, const HashedDocument& diffNbow2,
+                const std::unordered_map<TokenIndex, operations_research::NodeIndex>& tokenToNodeMap) {
+            std::size_t r = m_relatedWords->getR();
 
             // Find related words (edges) between documents in r|D| instead of |D|^2.
             // Instead of checking all token pairs between them, get the related words for each token in one of the documents
             // and for each related word list and each token in it do a look-up operation in the hash table of the other
 
-            // For a faster execution, we iterate over the smaller document and then do a look-up
+            // For a faster execution, we iterate over the smaller doc and then do a look-up
             // in the hash table of the larger one.
             bool isSourcesSmaller = diffNbow1.size() < diffNbow2.size();
             const auto& smaller = isSourcesSmaller? diffNbow1 : diffNbow2;
             const auto& larger = isSourcesSmaller? diffNbow2 : diffNbow1;
             std::vector<std::tuple<operations_research::NodeIndex, operations_research::NodeIndex, float>> edges;
-            edges.reserve(std::min(r, (unsigned int) larger.size()) * smaller.size());
+            edges.reserve(std::min(r, (std::size_t) larger.size()) * smaller.size());
 
             for(const auto& smallerIt: smaller) {
-                unsigned int smallerTokenIndex = smallerIt.first;
+                TokenIndex smallerTokenIndex = smallerIt.first;
                 operations_research::NodeIndex smallerNodeIndex = tokenToNodeMap.at(smallerTokenIndex);
                 const auto& relatedWords = m_relatedWords->getRelatedWords(smallerTokenIndex);
 
@@ -147,7 +146,7 @@ namespace fastwmd {
                 // tokens in common. Using this approach, we should have have a faster execution.
                 if(relatedWords.size() > larger.size()) {
                     for(const auto& largerIt: larger) {
-                        unsigned int largerTokenIndex = largerIt.first;
+                        TokenIndex largerTokenIndex = largerIt.first;
                         const auto& relatedIt = relatedWords.find(largerTokenIndex);
                         if(relatedIt == relatedWords.end()) continue;
 
@@ -161,7 +160,7 @@ namespace fastwmd {
                 }
                 else {
                     for(const auto& relatedIt: relatedWords) {
-                        unsigned int relatedTokenIndex = relatedIt.first;
+                        TokenIndex relatedTokenIndex = relatedIt.first;
                         const auto& largerIt = larger.find(relatedTokenIndex);
                         if(largerIt == larger.end()) continue;
 
@@ -175,10 +174,10 @@ namespace fastwmd {
                 }
             }
 
-            // Since we are removing some edges of the original wmd formulation, the solution can be unfeasible now.
+            // Since we are removing some edges of the original WMD formulation, the solution can be unfeasible now.
             // To the new formulation be always feasible we have to add alternative edges connecting the source and
             // target nodes. However, we just want to use these edges in last case, thus they have higher edge costs.
-            float maximumDistance = m_relatedWords->getMaximumDistance();
+            DistanceValue maximumDistance = m_relatedWords->getMaximumDistance();
             operations_research::NodeIndex transshipmentNodeIndex = diffNbow1.size() + diffNbow2.size();
             for(const auto& token: diffNbow1) {
                 operations_research::NodeIndex nodeIndex = tokenToNodeMap.at(token.first);
