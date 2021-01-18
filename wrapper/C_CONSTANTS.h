@@ -7,11 +7,19 @@
 
 namespace fastwmd {
 
+// Document-related representations
 typedef unsigned int TokenIndex;
 typedef float TokenWeight;
-typedef float DistanceValue;
 typedef std::vector<std::pair<TokenIndex, TokenWeight>> Document;
 typedef std::unordered_map<TokenIndex, TokenWeight> HashedDocument;
+
+// Embedding-related representations
+typedef float EmbeddingWeight;
+typedef Eigen::MatrixXf EigenEmbeddingMatrix;
+typedef Eigen::VectorXf EigenEmbeddingVector;
+
+// Distance-related representions
+typedef float DistanceValue;
 typedef std::unordered_map<TokenIndex, DistanceValue> HashedRelatedWords;
 typedef Eigen::MatrixXf EigenDistanceMatrix;
 typedef Eigen::VectorXf EigenDistanceVector;

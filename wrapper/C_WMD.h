@@ -24,8 +24,8 @@ namespace fastwmd {
          * The source nodes are the tokens in Doc1, the target nodes are the tokens in Doc2
          * and the edge costs are given by the word embedding distances between each token pair.
          *
-         * @param nbow1 List of tokens in Doc1 and their respective normalized weights
-         * @param nbow2 List of tokens in Doc2 and their respective normalized weights
+         * @param nbow1 L1-Normalized BOW representation of Doc1 (sorted by token index)
+         * @param nbow2 L1-Normalized BOW representation of Doc2 (sorted by token index)
          * @return WMD distance
          */
         DistanceValue computeDistance(const Document& nbow1, const Document& nbow2) {

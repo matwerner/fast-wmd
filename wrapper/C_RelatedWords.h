@@ -14,6 +14,13 @@ namespace fastwmd {
 
         C_RelatedWords() {}
 
+        /**
+         * Compute and store the r-closest word embeddings to each word embedding
+         * Also compute a distance representing the distance between any word embedding pair not explicitly stored
+         * 
+         * @param embeddings Word embedding data structure
+         * @param r Number of closest word to store
+         */
         C_RelatedWords(const std::shared_ptr<C_Embeddings>& embeddings, std::size_t r) {
             std::size_t numEmbeddings = embeddings->getNumEmbeddings();
 
@@ -25,7 +32,7 @@ namespace fastwmd {
             }
 
             // Pre-compute
-            const EigenDistanceMatrix& embeddingsMatrix = embeddings->getEmbeddings();
+            const EigenEmbeddingMatrix& embeddingsMatrix = embeddings->getEmbeddings();
             EigenDistanceVector embeddingsSquareNorm = embeddingsMatrix.colwise().squaredNorm();
             EigenDistanceVector SS = embeddingsSquareNorm;
 
@@ -61,14 +68,30 @@ namespace fastwmd {
             m_maximumDistance = (DistanceValue) (unrelatedDistancesTotal / unrelatedDistancesCount);
         }
 
+        /**
+         * Get the number of closest tokens stored per token
+         * 
+         * @return Number of closest tokens stored per token
+         */
         std::size_t getR() {
             return m_r;
         }
 
+        /**
+         * Get the r-closest tokens to the given token index
+         * 
+         * @param index Token index
+         * @return r-closest tokens and their respective distances to token index
+         */
         const HashedRelatedWords& getRelatedWords(TokenIndex index) {
             return m_cache[index];
         }
 
+        /**
+         * Get the distance value representing the distance between any token pair not explicitly stored
+         * 
+         * @return Maximum distance between any token pair
+         */
         DistanceValue getMaximumDistance() {
             return m_maximumDistance;
         }

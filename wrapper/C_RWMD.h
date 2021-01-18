@@ -21,8 +21,8 @@ namespace fastwmd {
          * The idea is finding the closest token in Doc2 for each token in Doc1.
          * Then do a weighted sum of the distances found by the respective weights of tokens in Doc1.
          *
-         * @param nbow1 Vector of tokens in Doc1 and their respective normalized weights
-         * @param nbow2 Vector of tokens in Doc2 and their respective normalized weights
+         * @param nbow1 L1-Normalized BOW representation of Doc1 (sorted by token index)
+         * @param nbow2 L1-Normalized BOW representation of Doc2 (sorted by token index)
          * @return RWMD distance value
          */
         DistanceValue computeDistance(const Document& nbow1, const Document& nbow2) {
@@ -52,8 +52,8 @@ namespace fastwmd {
          * The idea is finding the closest token in Doc2 for each token in Doc1.
          * Then do a weighted sum of the distances found by the respective weights of tokens in Doc1.
          *
-         * @param nbow1 List of tokens in Doc1 and their respective normalized weights
-         * @param nbow2 List of tokens in Doc2 and their respective normalized weights
+         * @param nbow1 L1-Normalized BOW representation of Doc1 (sorted by token index)
+         * @param nbow2 L1-Normalized BOW representation of Doc2 (sorted by token index)
          * @param D Distance matrix from all tokens in Doc1 to the tokens in Doc2
          * @param isTransposed Whether to invert the indices being accessed in the matrix D
          * @return Asymmetric RWMD distance value

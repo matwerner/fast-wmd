@@ -22,8 +22,8 @@ namespace fastwmd {
          * The idea is finding the closest token in D2 for each token in D1 as long as they are related.
          * Then do a weighted sum of the distances found by the respective weights of tokens in D1.
          *
-         * @param nbow1 Map of tokens in Doc1 and their respective normalized weights
-         * @param nbow2 Map of tokens in Doc2 and their respective normalized weights
+         * @param nbow1 L1-Normalized BOW representation of Doc1 (sorted by token index)
+         * @param nbow2 L1-Normalized BOW representation of Doc2 (sorted by token index)
          * @return Rel-RWMD distance
          */
         DistanceValue computeDistance(const Document& nbow1, const Document& nbow2) {
@@ -49,8 +49,8 @@ namespace fastwmd {
          * The idea is finding the closest token in D2 for each token in D1 as long as they are related.
          * Then do a weighted sum of the distances found and the respective weights of tokens in D1.
          *
-         * @param nbow1 Map of tokens in Doc1 and their respective weights
-         * @param nbow2 Map of tokens in Doc2 and their respective weights
+         * @param nbow1 L1-Normalized BOW representation of Doc1 (using hashed map)
+         * @param nbow2 L1-Normalized BOW representation of Doc2 (using hashed map)
          * @return Asymmetric Rel-RWMD distance
          */
         DistanceValue computeAsymmetricDistance(const HashedDocument& nbow1, const HashedDocument& nbow2) {

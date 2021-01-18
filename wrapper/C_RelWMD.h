@@ -25,8 +25,8 @@ namespace fastwmd {
          * and the edges are composed by the related token pairs between them. The costs of these edges
          * are given by the word embedding distances between each token pair.
          *
-         * @param nbow1 Map of tokens in Doc1 and their respective normalized weights
-         * @param nbow2 Map of tokens in Doc2 and their respective normalized weights
+         * @param nbow1 L1-Normalized BOW representation of Doc1 (sorted by token index)
+         * @param nbow2 L1-Normalized BOW representation of Doc2 (sorted by token index)
          * @return Rel-WMD distance value
          */
         DistanceValue computeDistance(const Document& nbow1, const Document& nbow2) {
@@ -114,8 +114,8 @@ namespace fastwmd {
         /**
          * Get all the edges connecting the source (Doc1) to the target (Doc2) nodes.
          *
-         * @param diffNbow1 Map of tokens exclusive to Doc1 and their respective normalized weights
-         * @param diffNbow2 Map of tokens exclusive to Doc2 and their respective normalized weights
+         * @param diffNbow1 L1-Normalized BOW representation of Doc1 (using hashed map)
+         * @param diffNbow2 L1-Normalized BOW representation of Doc2 (using hashed map)
          * @param tokenToNodeMap Structure mapping token indices to node indices
          * @return List of edges
          */

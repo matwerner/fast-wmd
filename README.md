@@ -9,7 +9,7 @@ Algorithms implemented:
 
 TODO:
 - Linear versions of RWMD and Rel-RWMD;
-- Code documentation;
+- Code documentation (DONE);
 - Package documentation;
 - Error handling;
 - Examples using jupyter notebook
